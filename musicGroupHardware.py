@@ -3,6 +3,8 @@ import sys
 from glob import glob
 from firebase import firebase
 import requests
+from mutagen.easyid3 import EasyID3
+import spotipy
 
 
 
@@ -16,4 +18,8 @@ if setting == "Spotify":
     #spotify work
 elif setting == "Internal":
     print(setting)
+    for song in glob("/home/pi/Music"):
+        mp3Info = EasyID3(song)
+        print(mp3Info.items())
+    quit = input("test")
 
