@@ -113,7 +113,7 @@ def continueWatching(duration):
     my_stream = db.child("Rooms").child("00001").stream(stream_handler)
     time.sleep(duration)
     songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(1).get()
-    print(songsByScore.get())
+    print(songsByScore)
     #subprocess.call(["omxplayer","-o","local","01 Good Morning.mp3"])
     
 
@@ -143,7 +143,57 @@ elif mode == "internal":
         print(playSong())
         print(continueWatching(songDuration))
         
+'''Possible Classes'''
+class preferences(object):
+    def __init__(self):
+        
+
+class internal(object):
+    def __init__(self,voteTime,voteCycle):
+        #niitialize values
+        self.voteTime = voteTime
+        
+    def updateInternal(self):
+        db = firebasePyre.database()
+        internal = 1
+        for files in os.listdir(musicFolder):
+            #print(files)
+            tag = TinyTag.get("/home/pi/Music/" + files)
+            artist = tag.artist
+            songName = tag.title
+            duration = tag.duration
+            votes = 0
+
+            Firebase.patch("/Rooms/00001",{artist + "-" +songName:duration})
+            Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
+            Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"title":songName})
+            Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"artist":artist})
+            Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"playNext":"false"})
+            Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"duration":duration})
+
     
+        songs = db.child("Rooms").child("00001").get()
+        highestVote = 0
+    
+        for song in songs.each():
+            print(song)
+            print(song.val().get("votes"))
+            if song.val().get("votes") > highestVote:
+                highestVote = song.val().get("votes")
+                print("highest vote is" + highestVote)
+        
+    def startVoting(self):
+        #reset votes
+        db = firebasePyre.database()
+        songs = db.child("Rooms").child("00001").get()
+        musicFolder = "/home/pi/Music"
+        for files in os.listdir(musicFolder):
+            tag = TinyTag.get("/home/pi/Music/" + files)
+            artist = tag.artist
+            songName = tag.title
+            duration = tag.duration
+            votes = 0
+            Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
 
     
         
