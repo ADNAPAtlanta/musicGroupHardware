@@ -11,6 +11,9 @@ import eyed3
 import time
 import pyrebase
 import pygame
+import subprocess
+import shlex
+import RPi.GPIO as GPIO
 
 
 internal = 0
@@ -33,7 +36,17 @@ songDuration = 0
 nextSongTitle = ""
 
 
-
+def resetVotesInternal():
+    db = firebasePyre.database()
+    songs = db.child("Rooms").child("00001").get()
+    musicFolder = "/home/pi/Music"
+    for files in os.listdir(musicFolder):
+        tag = TinyTag.get("/home/pi/Music/" + files)
+        artist = tag.artist
+        songName = tag.title
+        duration = tag.duration
+        votes = 0
+        Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
 def internal():
     db = firebasePyre.database()
     internal = 1
@@ -78,8 +91,6 @@ def playSong():
     
     
     for song in songs.each():
-        print(song)
-        print(song.val().get("votes"))
         if song.val().get("votes") > highestVote:
             highestVote = song.val().get("votes")
             songDuration = song.val().get("duration")
@@ -88,7 +99,12 @@ def playSong():
         print(songDuration)
     for files in os.listdir(musicFolder):
         if nextSongTitle in files:
-            os.system("/home/pi/Music/" +files)
+            print(files)
+            song = "/home/pi/Music/" + files
+            subprocess.call(["omxplayer","-o","local",song])
+            print(resetVotesInternal())
+    
+            
          
         
         
@@ -96,11 +112,16 @@ def continueWatching(duration):
     db = firebasePyre.database()
     my_stream = db.child("Rooms").child("00001").stream(stream_handler)
     time.sleep(duration)
-    songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(3).get("votes")
-    print(songsByScore)
+    songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(1).get()
+    print(songsByScore.get())
+    #subprocess.call(["omxplayer","-o","local","01 Good Morning.mp3"])
     
 
 
+    
+    
+        
+    
 
 mode = input("What is the mode?\n 1.internal update\n 2.internal\n")
 
@@ -116,10 +137,12 @@ elif mode == "internal update":
         print(continueWatching(songDuration))
 
 elif mode == "internal":
+    internal = 1
     playNextSong = input("Play next song? (y/n)")
     if playNextSong == "y":
         print(playSong())
         print(continueWatching(songDuration))
+        
     
 
     
