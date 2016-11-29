@@ -14,6 +14,7 @@ import pygame
 import subprocess
 import shlex
 #import RPi.GPIO as GPIO
+import shelve
 
 
 internal = 0
@@ -88,14 +89,6 @@ def continueWatching(duration):
     songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(1).get()
     print(songsByScore)
     #subprocess.call(["omxplayer","-o","local","01 Good Morning.mp3"])
-    
-
-
-    
-    
-        
-    
-
 
         
 '''Possible Classes'''
@@ -107,13 +100,16 @@ class preferences(object):
         self.voteTimeSetting = voteTimeSetting
         self.voteCycleSetting = voteCycleSetting
     def setVoteTimeSetting(self,time):
-        voteTime = open("options.txt","w")
+        voteTime = shelve.open("options.txt")
         voteTime.write("Vote Time: %s" % time)
         self.voteTimeSetting = time
+        voteTime["voteTime"] = self.voteTimeSetting
+        voteTime.close()
     def setVoteCycleSetting(self,cycle):
-        voteCycle = open("options.txt","w")
+        voteCycle = shelve.open("options.txt")
         voteCycle.write("Vote Cycle: %s" % cycle)
         self.voteCycleSetting = cycle
+        voteCycle["voteCycle"] = self.voteCycleSetting
     def getVoteTimeSetting(self):
         return self.voteTimeSetting
     def getVoteCycleSetting(self):
@@ -172,18 +168,12 @@ class internal(object):
     def continueWatching(self):
         print("continue")
 
-    
 
-
-
-getSetting = open("options","r")
-getSetting.readline()
-print(getSetting)
-
-
+getSetting = shelve.open("options")
+settings = preferences(getSetting["voteTIme"],getSetting["voteCycle"])
+print(settings.getVoteCycleSetting(),settings.getVoteTimeSetting())
 
 mode = input("What is the mode?\n 1.internal update\n 2.internal\n")
-
 
 if mode == "Spotify":
     print("test")
