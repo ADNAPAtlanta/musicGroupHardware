@@ -13,7 +13,7 @@ import pyrebase
 import pygame
 import subprocess
 import shlex
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 
 
 internal = 0
@@ -47,34 +47,7 @@ def resetVotesInternal():
         duration = tag.duration
         votes = 0
         Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
-def internal():
-    db = firebasePyre.database()
-    internal = 1
-    for files in os.listdir(musicFolder):
-        #print(files)
-        tag = TinyTag.get("/home/pi/Music/" + files)
-        artist = tag.artist
-        songName = tag.title
-        duration = tag.duration
-        votes = 0
 
-        Firebase.patch("/Rooms/00001",{artist + "-" +songName:duration})
-        Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
-        Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"title":songName})
-        Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"artist":artist})
-        Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"playNext":"false"})
-        Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"duration":duration})
-
-    
-    songs = db.child("Rooms").child("00001").get()
-    highestVote = 0
-    
-    for song in songs.each():
-        print(song)
-        print(song.val().get("votes"))
-        if song.val().get("votes") > highestVote:
-            highestVote = song.val().get("votes")
-            print("highest vote is" + highestVote)
        
       
 def stream_handler(post):
@@ -123,35 +96,37 @@ def continueWatching(duration):
         
     
 
-mode = input("What is the mode?\n 1.internal update\n 2.internal\n")
 
-
-if mode == "Spotify":
-    print(setting)
-    #spotify work
-elif mode == "internal update":
-    print(internal())
-    playNextSong = input("Play nexr song? (y/n)")
-    if playNextSong == "y":
-        print(playSong())
-        print(continueWatching(songDuration))
-
-elif mode == "internal":
-    internal = 1
-    playNextSong = input("Play next song? (y/n)")
-    if playNextSong == "y":
-        print(playSong())
-        print(continueWatching(songDuration))
         
 '''Possible Classes'''
+
+
+
 class preferences(object):
-    def __init__(self):
-        
+    def __init__(self,voteTimeSetting,voteCycleSetting):
+        self.voteTimeSetting = voteTimeSetting
+        self.voteCycleSetting = voteCycleSetting
+    def setVoteTimeSetting(self,time):
+        voteTime = open("options.txt","w")
+        voteTime.write("Vote Time: %s" % time)
+        self.voteTimeSetting = time
+    def setVoteCycleSetting(self,cycle):
+        voteCycle = open("options.txt","w")
+        voteCycle.write("Vote Cycle: %s" % cycle)
+        self.voteCycleSetting = cycle
+    def getVoteTimeSetting(self):
+        return self.voteTimeSetting
+    def getVoteCycleSetting(self):
+        return self.voteCycleSetting
+
+
 
 class internal(object):
     def __init__(self,voteTime,voteCycle):
         #niitialize values
         self.voteTime = voteTime
+        self.voteCycle = voteCycle
+
         
     def updateInternal(self):
         db = firebasePyre.database()
@@ -194,11 +169,40 @@ class internal(object):
             duration = tag.duration
             votes = 0
             Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
+    def continueWatching(self):
+        print("continue")
 
     
-        
-        
 
+
+
+getSetting = open("options.txt","r")
+getSetting.readline()
+print(getSetting)
+
+
+
+mode = input("What is the mode?\n 1.internal update\n 2.internal\n")
+
+
+if mode == "Spotify":
+    print("test")
+    #spotify work
+elif mode == "internal update":
+    #print(internal())
+    playNextSong = input("Play nexr song? (y/n)")
+    if playNextSong == "y":
+        print(playSong())
+        print(continueWatching(songDuration))
+
+elif mode == "internal":
+    #mode = internal()
+
+    internal = 1
+    playNextSong = input("Play next song? (y/n)")
+    if playNextSong == "y":
+        print(playSong())
+        print(continueWatching(songDuration))
     
     
         
