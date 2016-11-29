@@ -176,7 +176,7 @@ class internal(object):
 
 
 
-getSetting = open("options.txt","r")
+getSetting = open("options","r")
 getSetting.readline()
 print(getSetting)
 
