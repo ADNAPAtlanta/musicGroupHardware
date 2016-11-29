@@ -100,13 +100,13 @@ class preferences(object):
         self.voteTimeSetting = voteTimeSetting
         self.voteCycleSetting = voteCycleSetting
     def setVoteTimeSetting(self,time):
-        voteTime = shelve.open("options.txt")
+        voteTime = shelve.open("options")
         voteTime.write("Vote Time: %s" % time)
         self.voteTimeSetting = time
         voteTime["voteTime"] = self.voteTimeSetting
         voteTime.close()
     def setVoteCycleSetting(self,cycle):
-        voteCycle = shelve.open("options.txt")
+        voteCycle = shelve.open("options")
         voteCycle.write("Vote Cycle: %s" % cycle)
         self.voteCycleSetting = cycle
         voteCycle["voteCycle"] = self.voteCycleSetting
