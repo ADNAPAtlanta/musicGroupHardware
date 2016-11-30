@@ -170,7 +170,7 @@ class internal(object):
 
 
 getSetting = shelve.open("options.db")
-settings = preferences(getSetting["voteTIme"],getSetting["voteCycle"])
+settings = preferences(getSetting["voteTime"],getSetting["voteCycle"])
 print(settings.getVoteCycleSetting(),settings.getVoteTimeSetting())
 
 mode = input("What is the mode?\n 1.internal update\n 2.internal\n")
