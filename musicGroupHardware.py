@@ -100,16 +100,16 @@ class preferences(object):
         self.voteTimeSetting = voteTimeSetting
         self.voteCycleSetting = voteCycleSetting
     def setVoteTimeSetting(self,time):
-        voteTime = shelve.open("options.db")
+        voteTime = shelve.open("options.odb")
         voteTime.write("Vote Time: %s" % time)
         self.voteTimeSetting = time
-        voteTime["voteTime"] = self.voteTimeSetting
+        voteTime["voteTime"] = str(self.voteTimeSetting)
         voteTime.close()
     def setVoteCycleSetting(self,cycle):
-        voteCycle = shelve.open("options.db")
+        voteCycle = shelve.open("options.odb")
         voteCycle.write("Vote Cycle: %s" % cycle)
         self.voteCycleSetting = cycle
-        voteCycle["voteCycle"] = self.voteCycleSetting
+        voteCycle["voteCycle"] = str(self.voteCycleSetting)
     def getVoteTimeSetting(self):
         return self.voteTimeSetting
     def getVoteCycleSetting(self):
@@ -169,7 +169,7 @@ class internal(object):
         print("continue")
 
 
-getSetting = shelve.open("options.db")
+getSetting = shelve.open("options.odb")
 settings = preferences(getSetting["voteTime"],getSetting["voteCycle"])
 print(settings.getVoteCycleSetting(),settings.getVoteTimeSetting())
 
