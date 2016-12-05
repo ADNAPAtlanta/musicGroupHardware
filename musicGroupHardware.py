@@ -58,8 +58,11 @@ def stream_handler(post):
     print(post["data"]) # {'title': 'Pyrebase', "body": "etc..."}
             
 def playSong():
-    global songDuration
-    global nextSongTitle
+    nextSong = ""
+    curentlyPlaying = ""
+    songQueue = {}
+    songQueueFile = {}
+    songQueueDuration = 0
     db = firebasePyre.database()
     songs = db.child("Rooms").child("00001").get()
     highestVote = 0
@@ -69,33 +72,28 @@ def playSong():
         if song.val().get("votes") > highestVote:
             highestVote = song.val().get("votes")
             songDuration = song.val().get("duration")
-            nextSongTitle = song.val().get("title")
+            nextSong = song.val().get("title")
+            currentlyPlaying = song.val().get("title")
+            songQueue.update({nextSong:songDuration})
             print("highest vote is" + str(highestVote))
-        print(songDuration)
+        else:
+            songDuration = song.val().get("duration")
+            nextSong = song.val().get("title")
+            songQueue.update({nextSong:songDuration})
+            
+    if highestVote == 0:
+        print("all votes are equal")
+        #print(songDuration)
     for files in os.listdir(musicFolder):
-        if nextSongTitle in files:
-            print(files)
+        if nextSong in files:
             song = "/home/pi/Music/" + files
             subprocess.call(["omxplayer","-o","local",song])
+            print("now playing" + " " + nextSong)
             print(resetVotesInternal())
-    
-            
-         
-        
-        
-def continueWatching(duration):
-    db = firebasePyre.database()
-    my_stream = db.child("Rooms").child("00001").stream(stream_handler)
-    time.sleep(duration)
-    songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(1).get()
-    print(songsByScore)
-    #subprocess.call(["omxplayer","-o","local","01 Good Morning.mp3"])
+    time.sleep(songDuration)
 
         
 '''Possible Classes'''
-
-
-
 class preferences(object):
     def __init__(self,voteTimeSetting,voteCycleSetting):
         self.voteTimeSetting = voteTimeSetting
@@ -147,10 +145,11 @@ class internal(object):
     
         for song in songs.each():
             print(song)
-            print(song.val().get("votes"))
             if song.val().get("votes") > highestVote:
                 highestVote = song.val().get("votes")
                 print("highest vote is" + highestVote)
+            else:
+                print("no votes")
         
     def startVoting(self):
         #reset votes
@@ -165,17 +164,36 @@ class internal(object):
             votes = 0
             Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
     def continueWatching(self):
-        print("continue")
-        songQueue = []
+        songQueue = {}
+        songQueueFile = {}
+        songQueueDuration = 0
         db = firebasePyre.database()
         my_stream = db.child("Rooms").child("00001").stream(stream_handler)
-        time.sleep(duration)
-        songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(10).get()
+        time.sleep(float(self.voteTime))
+        songsByScore = db.child("Rooms").child("00001").order_by_child("votes").limit_to_first(15).get()
         for song in songsByScore.each():
-            print(song)
+            if songQueueDuration >= int(self.voteCycle)*60:
+                break
+            songQueue.update({song.val().get("title"),song.val().get("duration")})
+            songQueueDuration += int(song.val().get("duration"))
+            #print(songQueueDuration)
+            #print(song.val().get("title"))
             
-        print(songsByScore)
-
+        for song in songQueue:
+            for file in os.listdir(musicFolder):
+                if song in file:
+                    songQueueFile.update({file,songQueue[song]})
+        #print(songQueue)
+        if len(songQueueFile) > 1:
+            for song in songQueueFile[1:]:
+                print("now playing" + " " + songQueueFile[song])
+                subprocess.call(["omxplayer","-o","local",song])
+        else:
+            subprocess.call(["pkill","omx"])
+            
+        subprocess.call(["pkill","omx"])
+        self.startVoting()
+            
 def mainMenu():
     mode = input("What is the mode?\n 1.internal update\n 2.internal\n 3.preferences\n")
 
@@ -185,18 +203,19 @@ def mainMenu():
         #spotify work
     elif mode == "internal update":
         #print(internal())
-        playNextSong = input("Play nexr song? (y/n)")
+        playNextSong = input("Play next song? (y/n)")
         if playNextSong == "y":
             print(playSong())
             print(continueWatching(songDuration))
     elif mode == "preferences":
         getSetting = shelve.open("options")
-        cycle = int(input("how often is the voting cycle"))
+        cycle = int(input("how often is the voting cycle (0 for after every song; any other number is per minute"))
         settings.setVoteCycleSetting(cycle)
         getSetting["voteCycle"] = cycle
-        time = int(input("How much time is availible to vote?"))
+        Time = int(input("How much time is availible to vote?"))
         settings.setVoteTimeSetting(Time)
         getSetting["voteTime"] = Time
+        getSetting.close()
         
         mainMenu()
     
@@ -205,15 +224,15 @@ def mainMenu():
         mode = internal(settings.getVoteTimeSetting(),settings.getVoteCycleSetting())
         playNextSong = input("1.update\n 2.start voting\n")
         if playNextSong == "2" or "start voting":
-            print(settings.voteTimeSetting)
+            print(str(settings.voteTimeSetting) + " " + " seconds to vote!")
             mode.startVoting()
-            time.sleep(settings.getVoteTimeSetting)
+            time.sleep(float(settings.getVoteTimeSetting()))
             print(playSong())
-            print(continueWatching(songDuration))
+            mode.continueWatching()
         elif playNextSong == "1" or "update":
             mode.updateInternal()
             playSong()
-            continueWatching(songDuration)
+            mode.continueWatching()
     elif mode == "debug":
         debugOption = input("1.")
     else:
@@ -221,7 +240,10 @@ def mainMenu():
         mainMenu()
     
 getSetting = shelve.open("options")
+#options = list(getSetting.keys())
+# options[0] is the cycle options[1] is the time
 settings = preferences(getSetting["voteTime"],getSetting["voteCycle"])
+getSetting.close()
 print(settings.getVoteCycleSetting(),settings.getVoteTimeSetting())
 mainMenu()
 
