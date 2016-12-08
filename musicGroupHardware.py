@@ -13,8 +13,10 @@ import pyrebase
 import pygame
 import subprocess
 import shlex
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 import shelve
+from gpiozero import LED, Button
+from signal import pause
 
 
 internal = 0
@@ -41,6 +43,7 @@ nextSongTitle = ""
 def resetVotesInternal():
     db = firebasePyre.database()
     songs = db.child("Rooms").child("00001").get()
+    voters = db.child("Rooms").child("00001").("voters").get()
     musicFolder = "/home/pi/Music"
     for files in os.listdir(musicFolder):
         tag = TinyTag.get("/home/pi/Music/" + files)
@@ -49,8 +52,32 @@ def resetVotesInternal():
         duration = tag.duration
         votes = 0
         Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"votes":votes})
+    firebase.patch("/Rooms/00001/voters",{"placeholder":"voted"})
+    for voter in voters.each():
+        if song != "placeholder":
+            song.remove()
+        
+    
 
-       
+def startInternal():
+    mode = internal(settings.getVoteTimeSetting(),settings.getVoteCycleSetting())
+    print("press again to start voting")
+        
+    internalButton = Button(15,pull_up=False)
+    internalButton.wait_for_press()
+    internalButton
+    playNextSong = input("1.update\n 2.start voting\n")
+    if playNextSong == "2" or "start voting":
+        print(str(settings.voteTimeSetting) + " " + " seconds to vote!")
+        mode.startVoting()
+        time.sleep(float(settings.getVoteTimeSetting()))
+        print(playSong())
+        mode.continueWatching()
+    elif playNextSong == "1" or "update":
+        mode.updateInternal()
+        playSong()
+        mode.continueWatching()
+    
       
 def stream_handler(post):
     print(post["event"]) # put
@@ -138,6 +165,7 @@ class internal(object):
             Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"artist":artist})
             Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"playNext":"false"})
             Firebase.patch("/Rooms/00001/" + artist + "-" + songName,{"duration":duration})
+        Firebase.patch("/Rooms/00001/voters",{"placeholder":"voted"})
 
     
         songs = db.child("Rooms").child("00001").get()
@@ -174,7 +202,7 @@ class internal(object):
         for song in songsByScore.each():
             if songQueueDuration >= int(self.voteCycle)*60:
                 break
-            songQueue.update({song.val().get("title"),song.val().get("duration")})
+            songQueue.update({song.val().get("title"):song.val().get("duration")})
             songQueueDuration += int(song.val().get("duration"))
             #print(songQueueDuration)
             #print(song.val().get("title"))
@@ -182,7 +210,7 @@ class internal(object):
         for song in songQueue:
             for file in os.listdir(musicFolder):
                 if song in file:
-                    songQueueFile.update({file,songQueue[song]})
+                    songQueueFile.update({file:songQueue[song]})
         #print(songQueue)
         if len(songQueueFile) > 1:
             for song in songQueueFile[1:]:
@@ -195,11 +223,21 @@ class internal(object):
         self.startVoting()
             
 def mainMenu():
-    mode = input("What is the mode?\n 1.internal update\n 2.internal\n 3.preferences\n")
+    
+    
+        
+    #mode = input("What is the mode?\n 1.internal update\n 2.internal\n 3.preferences\n")
+    print("Select Mode")
+    internalButton = Button(15,pull_up=False,bounce_time=None)
+    voteButton = Button(21,pull_up=False,bounce_time=None)
+    while True:
+        if internalButton.is_pressed:
+            mode = "internal"
 
+            break
     if mode == "Spotify":
         menu = 0
-        print("test")
+        print("tet")
         #spotify work
     elif mode == "internal update":
         #print(internal())
@@ -222,7 +260,17 @@ def mainMenu():
 
     elif mode == "internal":
         mode = internal(settings.getVoteTimeSetting(),settings.getVoteCycleSetting())
-        playNextSong = input("1.update\n 2.start voting\n")
+        print("1.update\n 2.start voting\n")
+        
+        while True:
+            if voteButton.is_pressed:
+                playNextSong = "start voting"
+                print("start voting")
+                break
+            elif internalButton.is_pressed:
+                playNextSong = "update"
+                print("update")
+                break
         if playNextSong == "2" or "start voting":
             print(str(settings.voteTimeSetting) + " " + " seconds to vote!")
             mode.startVoting()
